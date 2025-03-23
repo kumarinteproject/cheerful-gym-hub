@@ -11,16 +11,23 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("Index page mounted");
+    console.log("Authentication status:", isAuthenticated);
+    
     // If authenticated, redirect to dashboard
     if (isAuthenticated) {
+      console.log("User is authenticated, redirecting to dashboard");
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
   const handleGetStarted = () => {
+    console.log("Get Started clicked, navigating to auth page");
     navigate('/auth');
   };
 
+  console.log("Rendering Index page");
+  
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}

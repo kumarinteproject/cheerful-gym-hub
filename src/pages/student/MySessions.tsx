@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGym } from '@/contexts/GymContext';
 import { Layout } from '@/components/layout/Layout';
@@ -18,10 +18,24 @@ const MySessions = () => {
   const { trainers, timeSlots, getStudentBookings, cancelBooking } = useGym();
   const { toast } = useToast();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   
-  if (!user) return null;
+  useEffect(() => {
+    console.log("MySessions component mounted");
+    setIsLoaded(true);
+    // Log auth state for debugging
+    console.log("Current user:", user);
+  }, [user]);
+  
+  if (!user) {
+    console.log("No user found in MySessions");
+    return <div>Loading user data...</div>;
+  }
+  
+  console.log("Rendering MySessions for user:", user.id);
   
   const bookings = getStudentBookings(user.id);
+  console.log("User bookings:", bookings);
   
   const upcomingBookings = bookings.filter(
     b => b.status === 'confirmed' || b.status === 'pending'
@@ -51,7 +65,10 @@ const MySessions = () => {
     const trainer = trainers.find(t => t.id === trainerId);
     const timeSlot = timeSlots.find(ts => ts.id === timeSlotId);
     
-    if (!trainer || !timeSlot) return null;
+    if (!trainer || !timeSlot) {
+      console.log("Missing trainer or timeslot data:", { trainerId, timeSlotId });
+      return null;
+    }
     
     const isCancellable = status === 'confirmed' || status === 'pending';
     
@@ -123,82 +140,84 @@ const MySessions = () => {
   return (
     <Layout>
       <PageTransition>
-        <SectionHeading
-          title="My Sessions"
-          description="View and manage your booked training sessions"
-        />
+        <div className="w-full">
+          <SectionHeading
+            title="My Sessions"
+            description="View and manage your booked training sessions"
+          />
 
-        <Tabs defaultValue="upcoming" className="w-full">
-          <TabsList className="w-full max-w-md mx-auto mb-6">
-            <TabsTrigger value="upcoming" className="flex-1">
-              Upcoming Sessions
-            </TabsTrigger>
-            <TabsTrigger value="past" className="flex-1">
-              Past Sessions
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="upcoming">
-            {upcomingBookings.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {upcomingBookings.map(booking => (
-                  <div key={booking.id}>
-                    {renderSessionCard(
-                      booking.id,
-                      booking.trainerId,
-                      booking.timeSlotId,
-                      booking.date,
-                      booking.status,
-                      booking.paymentStatus
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-muted/20 rounded-xl border border-border">
-                <div className="flex flex-col items-center">
-                  <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No upcoming sessions</h3>
-                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                    You don't have any upcoming training sessions. Book a session with one of our expert trainers.
-                  </p>
-                  <Button onClick={() => window.location.href = '/student/book'}>
-                    Book a Session
-                  </Button>
+          <Tabs defaultValue="upcoming" className="w-full">
+            <TabsList className="w-full max-w-md mx-auto mb-6">
+              <TabsTrigger value="upcoming" className="flex-1">
+                Upcoming Sessions
+              </TabsTrigger>
+              <TabsTrigger value="past" className="flex-1">
+                Past Sessions
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="upcoming">
+              {upcomingBookings.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {upcomingBookings.map(booking => (
+                    <div key={booking.id}>
+                      {renderSessionCard(
+                        booking.id,
+                        booking.trainerId,
+                        booking.timeSlotId,
+                        booking.date,
+                        booking.status,
+                        booking.paymentStatus
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="past">
-            {pastBookings.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pastBookings.map(booking => (
-                  <div key={booking.id}>
-                    {renderSessionCard(
-                      booking.id,
-                      booking.trainerId,
-                      booking.timeSlotId,
-                      booking.date,
-                      booking.status,
-                      booking.paymentStatus
-                    )}
+              ) : (
+                <div className="text-center py-12 bg-muted/20 rounded-xl border border-border">
+                  <div className="flex flex-col items-center">
+                    <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No upcoming sessions</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                      You don't have any upcoming training sessions. Book a session with one of our expert trainers.
+                    </p>
+                    <Button onClick={() => window.location.href = '/student/book'}>
+                      Book a Session
+                    </Button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-muted/20 rounded-xl border border-border">
-                <div className="flex flex-col items-center">
-                  <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No past sessions</h3>
-                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                    You don't have any past training sessions yet.
-                  </p>
                 </div>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="past">
+              {pastBookings.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {pastBookings.map(booking => (
+                    <div key={booking.id}>
+                      {renderSessionCard(
+                        booking.id,
+                        booking.trainerId,
+                        booking.timeSlotId,
+                        booking.date,
+                        booking.status,
+                        booking.paymentStatus
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-muted/20 rounded-xl border border-border">
+                  <div className="flex flex-col items-center">
+                    <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No past sessions</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                      You don't have any past training sessions yet.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </PageTransition>
     </Layout>
   );

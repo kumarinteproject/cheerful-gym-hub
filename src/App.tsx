@@ -33,123 +33,139 @@ import Settings from "./pages/admin/Settings";
 // Route Guards
 import { useAuth } from "@/contexts/AuthContext";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 // Protected Route component
 const ProtectedRoute = ({ children, allowedRoles = [] }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { isAuthenticated, user } = useAuth();
   
+  console.log("ProtectedRoute check:", { isAuthenticated, userRole: user?.role, allowedRoles });
+  
   if (!isAuthenticated) {
+    console.log("User not authenticated, redirecting to auth");
     return <Navigate to="/auth" replace />;
   }
   
   if (allowedRoles.length > 0 && (!user || !allowedRoles.includes(user.role))) {
+    console.log("User role not allowed, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
   
+  console.log("Access granted to protected route");
   return <>{children}</>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <GymProvider>
-          <BrowserRouter>
-            <AnimatePresence mode="wait">
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                
-                {/* Common Protected Routes */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Student Routes */}
-                <Route path="/student/trainers" element={
-                  <ProtectedRoute allowedRoles={['student']}>
-                    <TrainersList />
-                  </ProtectedRoute>
-                } />
-                <Route path="/student/book" element={
-                  <ProtectedRoute allowedRoles={['student']}>
-                    <BookSession />
-                  </ProtectedRoute>
-                } />
-                <Route path="/student/sessions" element={
-                  <ProtectedRoute allowedRoles={['student']}>
-                    <MySessions />
-                  </ProtectedRoute>
-                } />
-                <Route path="/student/payments" element={
-                  <ProtectedRoute allowedRoles={['student']}>
-                    <PaymentHistory />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Trainer Routes */}
-                <Route path="/trainer/schedule" element={
-                  <ProtectedRoute allowedRoles={['trainer']}>
-                    <Schedule />
-                  </ProtectedRoute>
-                } />
-                <Route path="/trainer/students" element={
-                  <ProtectedRoute allowedRoles={['trainer']}>
-                    <MyStudents />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Admin Routes */}
-                <Route path="/admin/students" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <Students />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/trainers" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <Trainers />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/sessions" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <Sessions />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/payments" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <Payments />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/settings" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <Settings />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Redirect old admin dashboard to new path */}
-                <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/trainer/dashboard" element={<Navigate to="/dashboard" replace />} />
-                
-                {/* Catch-all route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AnimatePresence>
-          </BrowserRouter>
-        </GymProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  console.log("App rendering");
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <GymProvider>
+            <BrowserRouter>
+              <AnimatePresence mode="wait">
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  
+                  {/* Common Protected Routes */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Student Routes */}
+                  <Route path="/student/trainers" element={
+                    <ProtectedRoute allowedRoles={['student']}>
+                      <TrainersList />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/student/book" element={
+                    <ProtectedRoute allowedRoles={['student']}>
+                      <BookSession />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/student/sessions" element={
+                    <ProtectedRoute allowedRoles={['student']}>
+                      <MySessions />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/student/payments" element={
+                    <ProtectedRoute allowedRoles={['student']}>
+                      <PaymentHistory />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Trainer Routes */}
+                  <Route path="/trainer/schedule" element={
+                    <ProtectedRoute allowedRoles={['trainer']}>
+                      <Schedule />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/trainer/students" element={
+                    <ProtectedRoute allowedRoles={['trainer']}>
+                      <MyStudents />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Admin Routes */}
+                  <Route path="/admin/students" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Students />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/trainers" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Trainers />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/sessions" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Sessions />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/payments" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Payments />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/settings" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Settings />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Redirect old admin dashboard to new path */}
+                  <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/trainer/dashboard" element={<Navigate to="/dashboard" replace />} />
+                  
+                  {/* Catch-all route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AnimatePresence>
+            </BrowserRouter>
+          </GymProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

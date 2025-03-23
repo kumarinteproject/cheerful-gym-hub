@@ -12,6 +12,9 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
 
+  console.log("Layout rendering with authenticated:", isAuthenticated);
+  console.log("Children:", children ? "Has children" : "No children");
+
   return (
     <div className="min-h-screen flex flex-col">
       {isAuthenticated && <TopBar />}
