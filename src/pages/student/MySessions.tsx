@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGym } from '@/contexts/GymContext';
@@ -10,7 +9,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { calendar, X, Clock, Calendar, AlertCircle } from 'lucide-react';
+import { X, Clock, Calendar, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const MySessions = () => {
