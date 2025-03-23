@@ -1,8 +1,8 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User, Student, Trainer, Admin } from '@/types';
-import { allUsers } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -33,100 +33,244 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // Check for existing session
   useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('gym_user');
-    if (savedUser) {
+    const checkSession = async () => {
+      setLoading(true);
+      
       try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
+        // Get session from Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // Fetch user details from our users table
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching user data:', error);
+            throw error;
+          }
+          
+          if (userData) {
+            // Map database user to our app's User type
+            const appUser: User = {
+              id: userData.id,
+              name: userData.name,
+              email: userData.email,
+              role: userData.role,
+              profileImage: userData.profile_image || undefined,
+            };
+            
+            setUser(appUser);
+          }
+        }
       } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('gym_user');
+        console.error('Session check error:', error);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+    
+    checkSession();
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          // Fetch user details from our users table
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching user data:', error);
+            return;
+          }
+          
+          if (userData) {
+            // Map database user to our app's User type
+            const appUser: User = {
+              id: userData.id,
+              name: userData.name,
+              email: userData.email,
+              role: userData.role,
+              profileImage: userData.profile_image || undefined,
+            };
+            
+            setUser(appUser);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+    
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In a real app, we would validate with the backend
-    // For demo purposes, just check if the user exists in our mock data
-    const foundUser = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('gym_user', JSON.stringify(foundUser));
+    try {
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      if (!data.user) {
+        toast({
+          title: "Login failed",
+          description: "User not found",
+          variant: "destructive",
+        });
+        throw new Error('User not found');
+      }
+      
+      // Fetch user details
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      
+      if (userError) {
+        toast({
+          title: "Login failed",
+          description: "Error fetching user data",
+          variant: "destructive",
+        });
+        throw userError;
+      }
+      
+      // Map database user to our app's User type
+      const appUser: User = {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        profileImage: userData.profile_image || undefined,
+      };
+      
+      setUser(appUser);
+      
       toast({
         title: "Login successful",
-        description: `Welcome back, ${foundUser.name}!`,
+        description: `Welcome back, ${appUser.name}!`,
       });
-    } else {
-      toast({
-        title: "Login failed",
-        description: "Invalid email or password",
-        variant: "destructive",
-      });
-      throw new Error('Invalid email or password');
+    } catch (error) {
+      console.error('Login error:', error);
+      // Error toast is shown above
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('gym_user');
-    toast({
-      title: "Logged out",
-      description: "You've been successfully logged out",
-    });
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      toast({
+        title: "Logged out",
+        description: "You've been successfully logged out",
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout failed",
+        description: "An error occurred during logout",
+        variant: "destructive",
+      });
+    }
   };
 
   const register = async (name: string, email: string, password: string) => {
     setLoading(true);
     
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if user already exists
-    const existingUser = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (existingUser) {
-      toast({
-        title: "Registration failed",
-        description: "Email already in use",
-        variant: "destructive",
+    try {
+      // Create user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
       });
-      throw new Error('Email already in use');
+      
+      if (error) {
+        toast({
+          title: "Registration failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      if (!data.user) {
+        toast({
+          title: "Registration failed",
+          description: "Error creating user",
+          variant: "destructive",
+        });
+        throw new Error('Error creating user');
+      }
+      
+      // Create user profile in our users table
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: data.user.id,
+          name,
+          email,
+          role: 'student', // Default role for new registrations
+          created_at: new Date().toISOString(),
+        });
+      
+      if (profileError) {
+        toast({
+          title: "Registration failed",
+          description: "Error creating user profile",
+          variant: "destructive",
+        });
+        throw profileError;
+      }
+      
+      // Create a new student
+      const newUser: Student = {
+        id: data.user.id,
+        name,
+        email,
+        role: 'student',
+        bookings: [],
+      };
+      
+      setUser(newUser);
+      
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created",
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      // Error toast is shown above
+    } finally {
+      setLoading(false);
     }
-    
-    // In a real app, we would send this to the backend
-    // For demo purposes, create a new user locally
-    const newUser: Student = {
-      id: `student-${Date.now()}`,
-      name,
-      email,
-      role: 'student',
-      bookings: [],
-    };
-    
-    // Add to allUsers array (this is just for demo, not persisted between refreshes)
-    allUsers.push(newUser);
-    
-    // Log in the new user
-    setUser(newUser);
-    localStorage.setItem('gym_user', JSON.stringify(newUser));
-    
-    toast({
-      title: "Registration successful",
-      description: "Your account has been created",
-    });
-    
-    setLoading(false);
   };
 
   return (
